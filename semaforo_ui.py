@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 import serial
 import serial.tools.list_ports
+import time
 
 class SemaforoApp:
     def __init__(self, root):
@@ -10,6 +11,7 @@ class SemaforoApp:
         self.root.geometry("300x250")
 
         self.serial_port = None
+        self.current_port_name = ""
 
         # Puerto COM
         tk.Label(root, text="Puerto COM:").pack(pady=5)
@@ -33,6 +35,9 @@ class SemaforoApp:
 
         # Botón Enviar
         tk.Button(root, text="Enviar Tiempos", command=self.send_times, bg="lightblue").pack(pady=15)
+
+        # Al cerrar la ventana, asegurar cierre del puerto
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def refresh_ports(self):
         ports = [port.device for port in serial.tools.list_ports.comports()]
@@ -60,12 +65,16 @@ class SemaforoApp:
             data_to_send = f"{green_time},{red_time}\n"
 
             # Conexión serie
-            if self.serial_port and self.serial_port.is_open:
-                self.serial_port.close()
+            if self.serial_port is None or not self.serial_port.is_open or self.current_port_name != port:
+                if self.serial_port and self.serial_port.is_open:
+                    self.serial_port.close()
+                self.serial_port = serial.Serial(port, 9600, timeout=1)
+                self.current_port_name = port
+                # Pequeña pausa al abrir puerto si es Arduino real (para el auto-reset)
+                time.sleep(1.5)
 
-            self.serial_port = serial.Serial(port, 9600, timeout=1)
             self.serial_port.write(data_to_send.encode('utf-8'))
-            self.serial_port.close()
+            self.serial_port.flush() # Asegurar que se vacie el buffer
 
             messagebox.showinfo("Éxito", f"Tiempos enviados:\nVerde: {green_time}s\nRojo: {red_time}s")
 
@@ -73,6 +82,11 @@ class SemaforoApp:
             messagebox.showerror("Error", "Por favor ingresa números válidos")
         except serial.SerialException as e:
             messagebox.showerror("Error de Conexión", f"No se pudo conectar al puerto {port}.\n\nDetalle: {e}")
+
+    def on_closing(self):
+        if self.serial_port and self.serial_port.is_open:
+            self.serial_port.close()
+        self.root.destroy()
 
 if __name__ == "__main__":
     root = tk.Tk()

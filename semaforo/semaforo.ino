@@ -29,11 +29,16 @@ void loop() {
   // Formato esperado: "G,R\n" (ej. "3,5\n")
   if (Serial.available() > 0) {
     String data = Serial.readStringUntil('\n');
+    data.trim(); // Eliminar espacios, \r u otros caracteres ocultos
+
     int separatorIndex = data.indexOf(',');
 
     if (separatorIndex != -1) {
       String greenStr = data.substring(0, separatorIndex);
       String redStr = data.substring(separatorIndex + 1);
+
+      greenStr.trim();
+      redStr.trim();
 
       long greenSec = greenStr.toInt();
       long redSec = redStr.toInt();
